@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Basic document metadata -->
+    <meta charset="UTF-8"> <!-- Specifies the character encoding for the document -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Ensures proper responsive behavior on all devices -->
+    <title>HematoVision: Blood Cell Classifier</title> <!-- Title displayed in the browser tab -->
+
+    <!-- Tailwind CSS CDN (Content Delivery Network) -->
+    <!-- This line imports the entire Tailwind CSS framework, allowing us to use its utility classes for styling. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <!-- Imports the 'Inter' font, giving our text a clean, modern look. -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom CSS Styles -->
+    <!-- We add custom CSS here to fine-tune styles that aren't directly achievable with simple Tailwind classes,
+         or to ensure specific visual consistency with your provided screenshots (e.g., button colors, spinner). -->
+    <style>
+        /* Apply 'Inter' font and a light grey background to the entire body */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light grey background */
+        }
+        /* Custom styles for the 'Predict' button to match the design in the screenshot */
+        .predict-button {
+            background-color: #ef4444; /* Tailwind's red-500, similar to image */
+            transition: background-color 0.2s ease; /* Smooth transition for hover effect */
+        }
+        .predict-button:hover {
+            background-color: #dc2626; /* Darker red on hover */
+        }
+        /* Custom styles for the 'Upload Another Image' button */
+        .upload-another-button {
+            background-color: #ef4444; /* Red-500, similar to image */
+            transition: background-color 0.2s ease;
+        }
+        .upload-another-button:hover {
+            background-color: #dc2626; /* Darker red on hover */
+        }
+        /* Hide the default browser file input button */
+        input[type="file"] {
+            display: none;
+        }
+        /* Create a custom-styled button that will trigger the hidden file input */
+        .custom-file-upload {
+            border: 2px solid #ccc; /* Light grey border */
+            display: inline-block; /* Allows padding and width/height to be set */
+            padding: 8px 12px; /* Inner spacing */
+            cursor: pointer; /* Changes mouse cursor to a pointer on hover */
+            border-radius: 8px; /* Rounded corners for the button */
+            background-color: #fff; /* White background */
+            color: #333; /* Dark grey text color */
+            transition: background-color 0.2s ease; /* Smooth transition for hover effect */
+        }
+        .custom-file-upload:hover {
+            background-color: #e2e8f0; /* Tailwind's grey-200 on hover */
+        }
+        /* CSS for a loading spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3); /* Transparent border for the ring */
+            border-radius: 50%; /* Makes it a perfect circle */
+            border-top: 4px solid #fff; /* White border for the spinning part */
+            width: 24px;
+            height: 24px;
+            -webkit-animation: spin 1s linear infinite; /* Safari animation */
+            animation: spin 1s linear infinite; /* Standard animation for continuous rotation */
+        }
+
+        /* Keyframe animations for the spinner */
+        @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<!-- Body of the HTML document -->
+<body class="flex flex-col min-h-screen">
+    <!-- Main container for the content, centered horizontally and with padding -->
+    <div class="flex-grow container mx-auto p-4 md:p-8 lg:p-12">
+        <!-- Header Section: Welcome and About Blood Cells -->
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-md mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-4">Welcome to the HematoVision</h1>
+            <!-- Red banner for "About Blood Cells" -->
+            <div class="bg-red-500 text-white p-4 rounded-lg text-center text-lg md:text-xl font-semibold mb-6">
+                <p>About Blood Cells</p>
+            </div>
+            <p class="text-gray-700 text-base md:text-lg leading-relaxed">
+                Blood cells are vital components of our body, playing essential roles in immunity, oxygen transport, and clotting. Understanding different types of blood cells is crucial for diagnosing various medical conditions. HematoVision aims to help in classifying these cells using state-of-the-art machine learning.
+            </p>
+        </div>
+
+        <!-- Predict Blood Cell Type Section -->
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-md mb-8">
+            <h2 class="text-2xl md:text-3xl font-semibold text-gray-800 mb-6 text-center">Predict Blood Cell Type</h2>
+            <p class="text-gray-600 text-center mb-6">Upload an image of a blood cell to determine its type using our state-of-the-art classification model.</p>
+
+            <!-- File Upload Form -->
+            <form id="uploadForm" class="flex flex-col items-center space-y-4">
+                <div class="flex items-center space-x-4 w-full justify-center">
+                    <!-- Label acts as the custom "Choose File" button -->
+                    <label for="imageUpload" class="custom-file-upload">
+                        Choose File
+                    </label>
+                    <!-- Actual file input, hidden from view -->
+                    <input type="file" id="imageUpload" name="file" accept="image/*" class="flex-grow">
+                    <!-- Displays the name of the chosen file -->
+                    <span id="fileName" class="text-gray-500 truncate max-w-[150px] sm:max-w-xs md:max-w-md">No file chosen</span>
+                </div>
+                <!-- Predict Button -->
+                <button type="submit" id="predictButton" class="predict-button text-white font-bold py-2 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 flex items-center justify-center">
+                    <span id="buttonText">Predict</span>
+                    <div id="loadingSpinner" class="spinner ml-2 hidden"></div> <!-- Hidden spinner -->
+                </button>
+            </form>
+        </div>
+
+        <!-- Prediction Result Section (Initially hidden) -->
+        <div id="predictionResultSection" class="bg-white p-6 md:p-8 rounded-xl shadow-md hidden">
+            <!-- Red banner for "Prediction Result" -->
+            <div class="bg-red-500 text-white p-4 rounded-lg text-center text-lg md:text-xl font-semibold mb-6">
+                <p>Prediction Result</p>
+            </div>
+            <div class="flex flex-col items-center space-y-6">
+                <!-- Image display area -->
+                <div class="w-full max-w-md bg-gray-100 rounded-lg p-4 shadow-inner flex justify-center items-center">
+                    <img id="predictedImage" src="#" alt="Uploaded Blood Cell" class="max-w-full h-auto rounded-md shadow-md border-2 border-gray-300">
+                </div>
+                <!-- Predicted Class display -->
+                <p class="text-xl md:text-2xl font-semibold text-gray-800">Predicted Class: <span id="predictedClass" class="text-red-600"></span></p>
+                <!-- Upload Another Image Button -->
+                <button id="uploadAnotherButton" class="upload-another-button text-white font-bold py-2 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300">
+                    Upload Another Image
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for interactivity -->
+    <script>
+        // Get references to HTML elements using their IDs
+        const uploadForm = document.getElementById('uploadForm');
+        const imageUpload = document.getElementById('imageUpload');
+        const fileNameSpan = document.getElementById('fileName');
+        const predictButton = document.getElementById('predictButton');
+        const buttonText = document.getElementById('buttonText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const predictionResultSection = document.getElementById('predictionResultSection');
+        const predictedImage = document.getElementById('predictedImage');
+        const predictedClass = document.getElementById('predictedClass');
+        const uploadAnotherButton = document.getElementById('uploadAnotherButton');
+
+        // Event Listener: When a file is chosen in the input
+        imageUpload.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                // Display the name of the selected file
+                fileNameSpan.textContent = this.files[0].name;
+                // Hide any previous prediction results when a new file is chosen
+                predictionResultSection.classList.add('hidden');
+                predictedImage.src = '#'; // Clear the image preview
+            } else {
+                // If no file is chosen (e.g., dialog cancelled), revert text
+                fileNameSpan.textContent = 'No file chosen';
+            }
+        });
+
+        // Event Listener: When the prediction form is submitted
+        uploadForm.addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent the default form submission (which would refresh the page)
+
+            // Basic client-side validation: Check if a file is selected
+            if (imageUpload.files.length === 0) {
+                // Using alert() is generally discouraged in production for better UX,
+                // but for this example, it's simple. Consider a custom modal for a real app.
+                alert('Please select an image file first.');
+                return; // Stop execution if no file
+            }
+
+            // --- Show Loading State ---
+            predictButton.disabled = true; // Disable button to prevent multiple clicks
+            buttonText.textContent = 'Predicting...'; // Change button text
+            loadingSpinner.classList.remove('hidden'); // Show the loading spinner
+
+            // Create FormData object to send the file to the server
+            const formData = new FormData();
+            formData.append('file', imageUpload.files[0]); // Append the selected file to the form data
+
+            try {
+                // Send a POST request to the Flask backend's '/predict' endpoint
+                const response = await fetch('/predict', {
+                    method: 'POST', // Specifies it's a POST request
+                    body: formData // The file data to be sent
+                });
+
+                // Check if the HTTP response was successful (status code 200-299)
+                if (!response.ok) {
+                    // If not successful, throw an error to be caught by the catch block
+                    throw new Error(HTTP error! status: ${response.status});
+                }
+
+                // Parse the JSON response from the server
+                const result = await response.json();
+
+                // --- Display Prediction Result ---
+                // The 'image_data' from the backend is a Base64 string, which can be directly used as an image source.
+                predictedImage.src = result.image_data;
+                // Set the predicted class text
+                predictedClass.textContent = result.prediction;
+                // Show the prediction results section
+                predictionResultSection.classList.remove('hidden');
+
+            } catch (error) {
+                // Catch any errors during the fetch operation (network issues, server errors)
+                console.error('Error during prediction:', error); // Log error to console for debugging
+                alert('Error during prediction. Please try again.'); // Inform the user
+            } finally {
+                // --- Reset Button State (always runs, regardless of success or failure) ---
+                predictButton.disabled = false; // Re-enable the button
+                buttonText.textContent = 'Predict'; // Reset button text
+                loadingSpinner.classList.add('hidden'); // Hide the loading spinner
+            }
+        });
+
+        // Event Listener: When "Upload Another Image" button is clicked
+        uploadAnotherButton.addEventListener('click', function() {
+            uploadForm.reset(); // Clear the file input (reset the form)
+            fileNameSpan.textContent = 'No file chosen'; // Reset the file name display
+            predictionResultSection.classList.add('hidden'); // Hide the results section
+            predictedImage.src = '#'; // Clear the displayed image preview
+        });
+    </script>
+</body>
+</html>
